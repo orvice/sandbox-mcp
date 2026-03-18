@@ -1,0 +1,5 @@
+sandbox-mcp
+dist/
+build/
+tmp/
+*.log
