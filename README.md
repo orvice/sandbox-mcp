@@ -1,27 +1,27 @@
 # sandbox-mcp
 
-一个基于 [github.com/modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk) 的最小可用 sandbox MCP Server。
+A minimal sandbox MCP server built with [github.com/modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk).
 
-只提供 `streamable HTTP`，默认暴露 3 个 tools：
+It exposes a `streamable HTTP` endpoint and provides 3 tools by default:
 
 - `ReadFile`
 - `WriteFile`
 - `Bash`
 
-适合直接跑在 Docker 里，通过环境变量配置监听地址、sandbox 根目录和 Bearer Token 鉴权。
+It is designed to run well inside Docker, with environment variables for the listen address, sandbox root, and bearer token authentication.
 
-## Run
+## Local Run
 
 ```bash
 go run .
 ```
 
-默认监听：
+Default endpoints:
 
 - MCP endpoint: `http://127.0.0.1:8080/mcp`
 - health: `http://127.0.0.1:8080/healthz`
 
-示例：
+Example:
 
 ```bash
 MCP_ADDR=:8080 \
@@ -30,7 +30,7 @@ MCP_AUTH_TOKEN=secret-token \
 go run .
 ```
 
-Docker:
+## Docker Run
 
 ```bash
 docker build -t sandbox-mcp .
@@ -42,21 +42,71 @@ docker run --rm -p 8080:8080 \
   sandbox-mcp
 ```
 
+## Docker Compose
+
+Example `compose.yaml`:
+
+```yaml
+services:
+  sandbox-mcp:
+    image: ghcr.io/orvice/sandbox-mcp:main
+    ports:
+      - "8080:8080"
+    environment:
+      MCP_ADDR: ":8080"
+      MCP_HTTP_PATH: "/mcp"
+      MCP_AUTH_TOKEN: "secret-token"
+      SANDBOX_ROOT: "/workspace"
+      SANDBOX_SHELL: "/bin/bash"
+    volumes:
+      - /tmp/sandbox-workspace:/workspace
+    restart: unless-stopped
+```
+
+Start it with:
+
+```bash
+docker compose up -d
+```
+
 ## Environment Variables
 
-- `MCP_ADDR`: HTTP 监听地址，默认 `:8080`
-- `MCP_HTTP_PATH`: MCP HTTP 路径，默认 `/mcp`
-- `MCP_AUTH_TOKEN`: 如果设置，则要求 `Authorization: Bearer <token>`
-- `SANDBOX_ROOT`: 文件读写和命令执行的根目录，默认当前目录
-- `SANDBOX_SHELL`: `Bash` tool 使用的 shell，默认 `bash`
-- `MCP_STATELESS`: 是否启用 stateless streamable HTTP，默认 `false`
-- `MCP_JSON_RESPONSE`: 是否优先返回 `application/json`，默认 `false`
+- `MCP_ADDR`: HTTP listen address, default `:8080`
+- `MCP_HTTP_PATH`: MCP HTTP path, default `/mcp`
+- `MCP_AUTH_TOKEN`: when set, requires `Authorization: Bearer <token>`
+- `SANDBOX_ROOT`: root directory for file access and command execution, default current directory
+- `SANDBOX_SHELL`: shell used by the `Bash` tool, default `bash`
+- `MCP_STATELESS`: enable stateless streamable HTTP mode, default `false`
+- `MCP_JSON_RESPONSE`: prefer `application/json` responses, default `false`
+
+## MCP Server JSON Example
+
+Example client configuration for a streamable HTTP MCP server with bearer auth:
+
+```json
+{
+  "mcpServers": {
+    "sandbox": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer secret-token"
+      }
+    }
+  }
+}
+```
+
+If your MCP client uses a different schema, keep the same core values:
+
+- endpoint: `http://127.0.0.1:8080/mcp`
+- auth header: `Authorization: Bearer <token>`
 
 ## Tools
 
 ### `ReadFile`
 
-请求参数：
+Request payload:
 
 ```json
 {
@@ -66,7 +116,7 @@ docker run --rm -p 8080:8080 \
 
 ### `WriteFile`
 
-请求参数：
+Request payload:
 
 ```json
 {
@@ -78,7 +128,7 @@ docker run --rm -p 8080:8080 \
 
 ### `Bash`
 
-请求参数：
+Request payload:
 
 ```json
 {
@@ -91,7 +141,7 @@ docker run --rm -p 8080:8080 \
 }
 ```
 
-返回结构包含：
+The result includes:
 
 - `cwd`
 - `exitCode`
@@ -100,6 +150,6 @@ docker run --rm -p 8080:8080 \
 
 ## Notes
 
-- 所有文件路径都会限制在 `SANDBOX_ROOT` 内，防止路径逃逸。
-- `Bash` 的工作目录同样会限制在 `SANDBOX_ROOT` 内。
-- 命令输出会做简单截断，避免单次返回过大。
+- All file paths are constrained to `SANDBOX_ROOT` to prevent path escape.
+- The `Bash` tool working directory is also constrained to `SANDBOX_ROOT`.
+- Command output is truncated to avoid returning excessively large responses.
