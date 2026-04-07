@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 go build -o /out/sandbox-mcp .
 
 FROM alpine:3
 
-RUN apk add --no-cache bash ca-certificates
+RUN apk add --no-cache bash ca-certificates git go python3
 
 RUN adduser -D -u 10001 -s /bin/bash appuser \
 	&& mkdir -p /workspace \
